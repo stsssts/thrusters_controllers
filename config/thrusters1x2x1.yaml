@@ -1,0 +1,23 @@
+thrusters:
+  front:
+      reversed: False
+      forward_modifier: 1.0
+      reverse_modifier: 1.0
+      # distance: -0.015
+      distance: 0
+  vertical:
+      reversed: True
+      forward_modifier: 1.0
+      reverse_modifier: 1.0
+  sway_front:
+      reversed: False
+      # forward_modifier: 0.9
+      # reverse_modifier: 0.5
+      forward_modifier: 1.0
+      reverse_modifier: 1.0
+      distance: 0.96
+  sway_rear:
+      reversed: False
+      forward_modifier: 1.0
+      reverse_modifier: 1.0
+      distance: -0.04
