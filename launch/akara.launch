@@ -1,0 +1,6 @@
+<launch>
+  <node name="thrusters_controller" pkg="thrusters_controllers"
+        type="akara_thrusters_controller_node" output="screen">
+    <rosparam command="load" file="$(find thrusters_controllers)/config/akara.yaml" />
+  </node>
+</launch>
