@@ -3,39 +3,81 @@ import rospy
 
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import Wrench
+from akara_msgs.msg import Thruster
+from akara_msgs.srv import BCS
+
+X_AXIS = 1
+Y_AXIS = 0
+Z_AXIS = 2
+YAW_AXIS = 3
+BUOYANCY_AXIS = 5
+
+STOP_BUTTON = 1
+FRONT_BCS_BUTTON = 7
+MAX_BUOYANCY_BUTTON = 4
+MIN_BUOYANCY_BUTTON = 6
+NEUTRAL_BUOYANCY_BUTTON = 5
 
 class JoyTeleop:
-    axes = {'X': 1,
-            'Y': 0,
-            'Z': 2,
-            'YAW': 3}
-
-    buttons = {'STOP': 1,
-               'INC_BUOYANCY': -1,
-               'DEC_BUOYANCY': -1,
-               'SET_NEG_BUOYANCY': -1,
-               'SET_POS_BUOYANCY': -1,
-               'SET_NEUTRAL_BUOYANCY': -1}
-
     def __init__(self):
         rospy.Subscriber("joy", Joy, self.joy_callback)
-        self.wrench_publisher = rospy.Publisher("command", Wrench, queue_size=3)
-        
-    def joy_callback(self, msg):
-        cmd = Wrench()
-        cmd.force.x = msg.axes[self.axes['X']]
-        cmd.force.y = msg.axes[self.axes['Y']]
-        cmd.force.z = msg.axes[self.axes['Z']]
-        
-        # cmd.torque.x = 0 # roll
-        # cmd.torque.y = 0 # pitch
-        cmd.torque.z = msg.axes[self.axes['YAW']]
 
-        self.wrench_publisher.publish(cmd)
+        self.data = None
+        self.steps = 50
+
+        self.wrench_publisher = rospy.Publisher("command", Wrench, queue_size=3)
+        self.buoyancy_publisher = rospy.Publisher("buoyancy", Thruster, queue_size=3)
+        self.buoyancy_client = rospy.ServiceProxy('bcs_service', BCS)
+
+    def joy_callback(self, msg):
+        self.data = msg
+        
+    def apply_data(self):
+        thrust_cmd = self.get_thrust_command()
+        self.wrench_publisher.publish(thrust_cmd)
+        
+        stepper_cmd = self.get_stepper_command()
+        self.buoyancy_publisher.publish(stepper_cmd)
+
+        self.set_buoyancy()
+        
+    def get_thrust_command(self):
+        cmd = Wrench()
+        cmd.force.x = self.data.axes[X_AXIS]
+        cmd.force.y = self.data.axes[Y_AXIS]
+        cmd.force.z = self.data.axes[Z_AXIS]
+        cmd.torque.z = self.data.axes[YAW_AXIS]
+        return cmd
+    
+    def get_stepper_command(self):
+        cmd = Thruster()
+        s = -self.data.axes[BUOYANCY_AXIS] * self.steps
+        if self.data.buttons[FRONT_BCS_BUTTON]:
+            cmd.power = [s, 0]
+        else:
+            cmd.power = [0, s]
+        return cmd
+        
+    def set_buoyancy(self):
+        if self.data.buttons[MIN_BUOYANCY_BUTTON]:
+            self.buoyancy_client.call('negative')
+        elif self.data.buttons[MAX_BUOYANCY_BUTTON]:
+            self.buoyancy_client.call('positive')
+        elif self.data.buttons[NEUTRAL_BUOYANCY_BUTTON]:
+            self.buoyancy_client.call('neutral')
+        elif self.data.buttons[STOP_BUTTON]:
+            self.buoyancy_client.call('stop')
+
+    def loop(self):
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            if self.data is not None:
+                self.apply_data()
+            rate.sleep()
 
 
 if __name__ == '__main__':
     rospy.init_node('surface_side', anonymous=True)
     j = JoyTeleop()
-    rospy.spin()
+    j.loop()
 
