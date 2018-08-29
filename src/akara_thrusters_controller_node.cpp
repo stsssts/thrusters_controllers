@@ -1,13 +1,15 @@
 #include <ros/ros.h>
 
 #include <eigen3/Eigen/Core>
-#include <eigen_conversions/eigen_msg.h>
+#include <eigen3/Eigen/Eigen>
 
-#include  <geometry_msgs/Wrench.h>
+#include <geometry_msgs/Wrench.h>
 #include <akara_msgs/Thruster.h>
 
-typedef Eigen::Matrix<double,6,6> Matrix6d;
-typedef Eigen::Matrix<double,6,1> Vector6d;
+using Eigen::MatrixXf;
+using Eigen::VectorXf;
+
+typedef Eigen::Matrix<float,6,1> Vector6f;
 
 class ThrusterController
 {
@@ -15,12 +17,12 @@ public:
   ThrusterController(ros::NodeHandle& nh)
   {
     ros::NodeHandle pnh("~");
+
     if (pnh.hasParam("TAM"))
     {
-      std::vector<double> t(36);
+      std::vector<float> t;
       pnh.getParam("TAM", t);
-      tam_ = Matrix6d(t.data());
-      tam_.transposeInPlace();
+      vectorToEigenMatrix_(t, tam_);
     }
     else
     {
@@ -33,20 +35,20 @@ public:
               1.0000, 0.0000, 0.0000,-0.0000, 0.0000, 0.0000; // hvost_praviy
     }
 
-    ROS_INFO("Thrusters configuration:");
-    std::cout << tam_ << "\n";
+    ROS_INFO_STREAM("Thrusters configuration:\n" << tam_);
 
     if (pnh.hasParam("K"))
     {
-      std::vector<double> k(6);
-      pnh.getParam("K", k);
-      Vector6d K(k.data());
-      tam_ = K.asDiagonal() * tam_;
+      std::vector<float> coeffs;
+      pnh.getParam("K", coeffs);
 
-      ROS_INFO("Coefficients:");
-      std::cout << K << "\n";
+      VectorXf K;
+      vectorToEigenVector_(coeffs, K);
+      tam_ = K.asDiagonal() * tam_;
+      ROS_INFO_STREAM("Coefficients: " << K.transpose());
     }
 
+    thruster_msg_.power.resize(tam_.rows());
 
     wrench_sub_ = nh.subscribe<geometry_msgs::Wrench>(
           "command", 1, &ThrusterController::wrenchCallback, this);
@@ -55,21 +57,53 @@ public:
 
   void wrenchCallback(const geometry_msgs::WrenchConstPtr& msg)
   {
-    akara_msgs::Thruster thruster_msg;
-    tf::wrenchMsgToEigen(*msg, wrench_);
-    Vector6d thrust = tam_ * wrench_;
-    for(int i = 0; i < thrust.rows(); ++i)
-      thruster_msg.power.push_back(thrust(i));
+    wrenchMsgToEigen_(*msg, wrench_);
+    eigenVectorToVector_(tam_ * wrench_, thruster_msg_.power);
+    thrusters_pub_.publish(thruster_msg_);
+  }
 
-    thrusters_pub_.publish(thruster_msg);
+private:
+  void wrenchMsgToEigen_(const geometry_msgs::Wrench& msg, Vector6f& wrench)
+  {
+    wrench[0] = msg.force.x;
+    wrench[1] = msg.force.y;
+    wrench[2] = msg.force.z;
+    wrench[3] = msg.torque.x;
+    wrench[4] = msg.torque.y;
+    wrench[5] = msg.torque.z;
+  }
+
+  void vectorToEigenMatrix_(const std::vector<float>& v, MatrixXf& m)
+  {
+    m.resize(6, v.size()/6);
+    for (int i = 0; i < v.size(); ++i)
+      m(i) = v[i];
+    m.transposeInPlace();
+  }
+
+  void vectorToEigenVector_(const std::vector<float>& v, VectorXf& ev)
+  {
+    ev.resize(v.size());
+    for (int i = 0; i < v.size(); ++i)
+      ev(i) = v[i];
+  }
+
+  void eigenVectorToVector_(const VectorXf& ev, std::vector<float>& v)
+  {
+    for (int i = 0; i < v.size(); ++i)
+      v[i] = ev(i);
   }
 
   ros::Subscriber wrench_sub_;
   ros::Publisher thrusters_pub_;
 
-  Vector6d wrench_;
-  Matrix6d tam_;
+  akara_msgs::Thruster thruster_msg_;
+
+  Vector6f wrench_;
+  MatrixXf tam_;
 };
+
+
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "akara_thrusters_controller_node");

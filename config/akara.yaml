@@ -1,18 +1,18 @@
 
-TAM: [   # x       y       z       r       p       y
-      0.0000, 0.0000, 1.0000, 0.0000, 0.5000, 0.0000, # nosovaya_podrulka_vertikalnaya
-      0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 0.5000, # nosovaya_podrulka_gorizontalnaya
-      0.0000, 1.0000, 0.0000, 0.0000, 0.0000,-0.5000, # hvostovaya_podrulka_gorizontalnaya
-      0.0000, 0.0000, 1.0000, 0.0000,-0.5000, 0.0000, # hvostovaya_podrulka_vertikalnaya
-      1.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, # hvost_leviy
-      1.0000, 0.0000, 0.0000,-0.0000, 0.0000, 0.0000  # hvost_praviy
+TAM: [ # x     y     z     r     p     y
+      0.50, 0.00, 0.00, 0.00, 0.00,-0.50, # hvost_leviy
+      0.50, 0.00, 0.00, 0.00, 0.00, 0.50, # hvost_praviy
+      0.00, 0.00, 0.50, 0.00, 0.50, 0.00, # nosovaya_podrulka_vertikalnaya
+      0.00, 0.00, 0.50, 0.00,-0.50, 0.00, # hvostovaya_podrulka_vertikalnaya
+#      0.00, 1.00, 0.00, 0.00, 0.00, 0.50, # nosovaya_podrulka_gorizontalnaya
+#      0.00, 1.00, 0.00, 0.00, 0.00,-0.50, # hvostovaya_podrulka_gorizontalnaya
       ]
       
 K: [
-    1.0, # nosovaya_podrulka_vertikalnaya
-    1.0, # nosovaya_podrulka_gorizontalnaya
-    1.0, # hvostovaya_podrulka_gorizontalnaya
-    1.0, # hvostovaya_podrulka_vertikalnaya
     1.0, # hvost_leviy
-    1.0  # hvost_praviy
+    1.0, # hvost_praviy
+    1.0, # nosovaya_podrulka_vertikalnaya
+    1.0, # hvostovaya_podrulka_vertikalnaya
+    # 1.0, # nosovaya_podrulka_gorizontalnaya
+    # 1.0, # hvostovaya_podrulka_gorizontalnaya
     ]
